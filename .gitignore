@@ -1,0 +1,21 @@
+# Compilados
+*.class
+out/
+build/
+target/
+dist/
+
+# Archivos personales del IDE
+fuentes.txt
+nbproject/private/
+nbbuild/
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
