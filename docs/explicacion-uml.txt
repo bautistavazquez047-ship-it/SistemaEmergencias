@@ -1,0 +1,104 @@
+SISTEMA DE GESTIÓN DE EMERGENCIAS Y ASIGNACIÓN DE RECURSOS
+Explicación del Diagrama de Clases UML
+
+========================================================================
+1. RESPONSABILIDADES POR PAQUETE Y CLASE
+========================================================================
+
+Paquete com.emergencias
+-----------------------
+- Main: Punto de entrada e interfaz de consola. Muestra el menú, lee las
+  entradas del usuario validando formatos numéricos, delega las
+  operaciones en CentralEmergencias y captura OperacionInvalidaException
+  para informar errores sin interrumpir la ejecución.
+
+Paquete com.emergencias.modelo
+------------------------------
+- Emergencia (abstracta): Define los atributos comunes (código,
+  ubicación, gravedad de 1 a 5, fecha y orden de ingreso, estado y
+  unidad asignada), valida invariantes en la construcción y controla las
+  transiciones de estado mediante asignarUnidad() y resolver(). Declara
+  los métodos abstractos getTipo(), calcularPrioridad() y admiteUnidad()
+  para que cada subclase defina su comportamiento.
+- EmergenciaMedica (hereda de Emergencia): Representa incidentes que
+  requieren asistencia sanitaria. Su prioridad coincide con la gravedad
+  y admite unidades de tipo AMBULANCIA o RESCATE.
+- EmergenciaIncendio (hereda de Emergencia): Representa incendios. Su
+  prioridad coincide con la gravedad y admite unidades de tipo BOMBEROS
+  o RESCATE.
+- UnidadAtencion: Modela un recurso de respuesta (código en mayúsculas,
+  tipo y estado disponible). Controla mediante ocupar() y liberar() que
+  una unidad no pueda atender dos emergencias simultáneamente.
+- EstadoEmergencia (enum): Modela el ciclo de vida de una emergencia
+  (PENDIENTE, EN_ATENCION, RESUELTA).
+- TipoUnidad (enum): Define los tipos válidos de unidades (AMBULANCIA,
+  BOMBEROS, RESCATE).
+- OperacionInvalidaException: Excepción de dominio (hereda de
+  RuntimeException) lanzada ante datos inválidos, códigos duplicados,
+  unidades ocupadas o incompatibles y cambios de estado inconsistentes.
+
+Paquete com.emergencias.servicio
+--------------------------------
+- CentralEmergencias: Orquesta las colecciones principales del sistema
+  (emergencias y unidades). Mantiene la lista de emergencias ordenada
+  ascendentemente por código para registrar sin duplicados y localizar
+  en O(log n) con búsqueda binaria; además gestiona asignaciones,
+  resoluciones, listados por prioridad y estadísticas.
+- GeneradorDatos: Genera conjuntos reproducibles de emergencias en
+  memoria (con códigos únicos mezclados mediante Fisher-Yates) para
+  pruebas de rendimiento y carga las 200 emergencias y 9 unidades de
+  demostración.
+- PruebaRendimiento (y clase interna Resultados): Ejecuta mediciones
+  comparativas con System.nanoTime() sobre 100, 1.000 y 10.000
+  registros (búsqueda lineal vs. binaria e inserción vs. Merge Sort),
+  aplicando calentamiento previo de la JVM, copias idénticas y promedio
+  sobre 10 repeticiones.
+
+Paquete com.emergencias.algoritmos
+----------------------------------
+- Busquedas: Implementa manualmente busquedaLineal y busquedaBinaria
+  por código de emergencia.
+- Ordenamientos: Implementa manualmente insercion y mergeSort genéricos
+  y estables usando un Comparator.
+- Comparadores: Provee los comparadores POR_CODIGO (orden ascendente
+  para la búsqueda binaria) y POR_PRIORIDAD (mayor prioridad primero;
+  a igual prioridad, menor fecha de ingreso y, en último término, menor
+  ordenIngreso).
+
+========================================================================
+2. RELACIONES Y MULTIPLICIDADES
+========================================================================
+
+- Herencia (EmergenciaMedica --|> Emergencia,
+  EmergenciaIncendio --|> Emergencia):
+  Ambas subclases extienden a Emergencia, heredan sus atributos y reglas
+  de transición de estado y sobrescriben getTipo(), calcularPrioridad()
+  y admiteUnidad(TipoUnidad), materializando el polimorfismo.
+
+- Asociación Main "1" --> "1" CentralEmergencias:
+  La clase de consola opera sobre una única instancia central (CENTRAL)
+  durante toda la ejecución.
+
+- Agregación CentralEmergencias "1" o--> "0..*" Emergencia y
+  CentralEmergencias "1" o--> "0..*" UnidadAtencion:
+  La central administra las colecciones de emergencias y de unidades
+  registradas, pudiendo contener cero o múltiples instancias de cada una.
+
+- Asociación Emergencia "0..*" --> "0..1" UnidadAtencion:
+  Cada emergencia puede no tener unidad asignada (0, cuando está
+  PENDIENTE) o tener asignada una única unidad (1, al pasar a
+  EN_ATENCION, conservando la referencia al quedar RESUELTA). Una unidad
+  solo puede estar asignada a una emergencia activa a la vez, aunque a
+  lo largo del tiempo puede atender múltiples emergencias distintas.
+
+- Asociaciones Emergencia "0..*" --> "1" EstadoEmergencia y
+  UnidadAtencion "0..*" --> "1" TipoUnidad:
+  Toda emergencia posee exactamente un estado y toda unidad un único
+  tipo.
+
+- Dependencias (..>):
+  Reflejan el uso puntual entre clases sin mantener referencias
+  permanentes: Main utiliza GeneradorDatos y PruebaRendimiento;
+  CentralEmergencias y PruebaRendimiento utilizan Busquedas,
+  Ordenamientos y Comparadores; y las clases del modelo y servicio
+  lanzan OperacionInvalidaException al validar reglas del dominio.
